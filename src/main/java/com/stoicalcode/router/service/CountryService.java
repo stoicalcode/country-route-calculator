@@ -1,11 +1,12 @@
 package com.stoicalcode.router.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.stoicalcode.router.model.CountryDto;
-import com.stoicalcode.router.model.CountryValidationResponseDto;
-import com.stoicalcode.router.model.Region;
 import com.stoicalcode.router.exception.InvalidCountryException;
 import com.stoicalcode.router.exception.PathNotFoundException;
+import com.stoicalcode.router.model.CountryDto;
+import com.stoicalcode.router.model.CountryValidationResponseDto;
+import com.stoicalcode.router.model.NameDto;
+import com.stoicalcode.router.model.Region;
 import lombok.Setter;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,7 +23,6 @@ import static java.util.stream.Collectors.toSet;
 
 @Slf4j
 @Service
-
 public class CountryService {
     private static final String INVALID_ORIGIN_COUNTRY_ERR0R = "invalid origin country: '%s'";
     private static final String INVALID_DESTINATION_COUNTRY_ERROR = "invalid destination country: '%s'";
@@ -37,7 +37,8 @@ public class CountryService {
     @Setter
     private ObjectMapper objectMapper = new ObjectMapper();
 
-    public CountryValidationResponseDto validateCountries(String origin, String destination) throws IOException {
+    public CountryValidationResponseDto validateCountries(String origin, String destination)
+            throws IOException, InvalidCountryException, PathNotFoundException {
         origin = origin.toUpperCase();
         destination = destination.toUpperCase();
         List<CountryDto> allCountries = getCountriesFromUrl();
@@ -51,12 +52,13 @@ public class CountryService {
             CountryDto[] countries = objectMapper.readValue(new URL(countryDataUrl), CountryDto[].class);
             return Arrays.asList(countries);
         } catch (IOException e) {
-            log.error("Could not get countries from URL '{}': ", countryDataUrl, e);
-            throw e;
+            log.error("Error found while while fetching countries data from URL '{}'", countryDataUrl);
+            throw new IOException("An error occurred while fetching countries data");
         }
     }
 
-    private void validateOriginAndDestination(String origin, String destination, List<CountryDto> allCountries) {
+    private void validateOriginAndDestination(String origin, String destination,
+                                              List<CountryDto> allCountries) throws InvalidCountryException {
         List<String> errors = new ArrayList<>();
 
         Set<String> validCountryCodes = allCountries.stream().map(CountryDto::getCca3).collect(toSet());
@@ -80,8 +82,18 @@ public class CountryService {
         }
     }
 
-    private CountryValidationResponseDto validatePathBetweenOriginAndDestination(String origin, String destination,
-                                                                                 List<CountryDto> allCountries) {
+    public String getCountryNameWithCca3(CountryDto country) {
+        NameDto countryName = country.getName();
+        if (countryName != null && countryName.getCommon() != null) {
+            return String.format("%s (%s)", countryName.getCommon(), country.getCca3());
+        }
+
+        return country.getCca3();
+    }
+
+    private CountryValidationResponseDto validatePathBetweenOriginAndDestination(
+            String origin, String destination, List<CountryDto> allCountries) throws PathNotFoundException {
+
         CountryDto originCountry = null;
         CountryDto destinationCountry = null;
         Map<String, CountryDto> cca3ToCountryMap = new HashMap<>();
@@ -98,16 +110,14 @@ public class CountryService {
             Region destinationRegion = destinationCountry.getRegion();
 
             if (!originRegion.isConnectedWith(destinationRegion)) {
-                errors.add(String.format(REGIONS_NOT_CONNECTED_BY_LAND_ERROR, origin, originRegion,
-                        destination, destinationRegion));
+                errors.add(String.format(REGIONS_NOT_CONNECTED_BY_LAND_ERROR, origin, originRegion, destination, destinationRegion));
             } else if (isAnyCountryWithoutBorders(originCountry, destinationCountry)) {
                 errors.add(String.format(COUNTRY_WITHOUT_LAND_BORDERS_ERROR, origin, destination));
-            } else {
-                cca3ToCountryMap = allCountries.stream().collect(toMap(CountryDto::getCca3, Function.identity()));
             }
         }
 
         if (CollectionUtils.isEmpty(errors)) {
+            cca3ToCountryMap = allCountries.stream().collect(toMap(CountryDto::getCca3, Function.identity()));
             return new CountryValidationResponseDto(originCountry, destinationCountry, cca3ToCountryMap);
         }
 
@@ -115,15 +125,10 @@ public class CountryService {
     }
 
     private Optional<CountryDto> getCountryByCode(String cca3Code, List<CountryDto> countries) {
-        return countries.stream()
-                .filter(c -> c.getCca3().equalsIgnoreCase(cca3Code))
-                .findFirst();
+        return countries.stream().filter(c -> c.getCca3().equalsIgnoreCase(cca3Code)).findFirst();
     }
 
     private boolean isAnyCountryWithoutBorders(CountryDto c1, CountryDto c2) {
-        return !c1.equals(c2) && (
-                CollectionUtils.isEmpty(c1.getBorders()) ||
-                        CollectionUtils.isEmpty(c2.getBorders())
-        );
+        return !c1.equals(c2) && (CollectionUtils.isEmpty(c1.getBorders()) || CollectionUtils.isEmpty(c2.getBorders()));
     }
 }

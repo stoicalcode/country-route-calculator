@@ -45,7 +45,7 @@ class CountryServiceTest {
     }
 
     @Test
-    void shouldGetValidResponse_whenValidCountries() throws IOException {
+    void shouldGetValidResponse_whenValidCountries() throws IOException, InvalidCountryException, PathNotFoundException {
         String origin = "USA";
         String destination = "CAN";
 
@@ -65,9 +65,9 @@ class CountryServiceTest {
         assertThat(response).isNotNull();
         assertThat(response.originCountry()).isEqualTo(originCountry);
         assertThat(response.destinationCountry()).isEqualTo(destinationCountry);
-        assertThat(response.codeToCountryMap()).isNotNull();
-        assertThat(response.codeToCountryMap().get("USA")).isEqualTo(originCountry);
-        assertThat(response.codeToCountryMap().get("CAN")).isEqualTo(destinationCountry);
+        assertThat(response.cca3ToCountryMap()).isNotNull();
+        assertThat(response.cca3ToCountryMap().get("USA")).isEqualTo(originCountry);
+        assertThat(response.cca3ToCountryMap().get("CAN")).isEqualTo(destinationCountry);
     }
 
     @ParameterizedTest

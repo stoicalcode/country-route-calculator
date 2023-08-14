@@ -1,5 +1,6 @@
 package com.stoicalcode.router.service;
 
+import com.stoicalcode.router.exception.InvalidCountryException;
 import com.stoicalcode.router.exception.PathNotFoundException;
 import com.stoicalcode.router.model.CountryDto;
 import com.stoicalcode.router.model.CountryValidationResponseDto;
@@ -10,11 +11,14 @@ import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
 import java.io.IOException;
-import java.util.*;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.Mockito.*;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.when;
 
 class BreadthFirstSearchCountryServiceTest {
 
@@ -30,7 +34,7 @@ class BreadthFirstSearchCountryServiceTest {
     }
 
     @Test
-    void shouldFindValidLandRoute() throws IOException {
+    void shouldFindValidLandRoute() throws InvalidCountryException, IOException, PathNotFoundException {
         NameDto czechiaName = NameDto.builder().common("Czechia").official("Czech Republic").build();
         NameDto austriaName = NameDto.builder().common("Austria").official("Republic of Austria").build();
         NameDto italyName = NameDto.builder().common("Italy").official("Italian Republic").build();
@@ -49,13 +53,11 @@ class BreadthFirstSearchCountryServiceTest {
         when(mockCountryService.validateCountries("CZE", "ITA")).thenReturn(validationResponse);
 
         List<String> actual = sut.findLandRoute("CZE", "ITA");
-        List<String> expectedRoute = Arrays.asList("CZE", "AUT", "ITA");
-
-        assertThat(actual).isEqualTo(expectedRoute);
+        assertThat(actual).isEqualTo(Arrays.asList("CZE", "AUT", "ITA"));
     }
 
     @Test
-    void shouldThrowPathNotFoundException() throws IOException {
+    void shouldThrowPathNotFoundException() throws IOException, InvalidCountryException, PathNotFoundException {
         CountryDto originCountry = CountryDto.builder()
                 .cca3("C1").borders(Collections.emptyList()).build();
         CountryDto destinationCountry = CountryDto.builder()
