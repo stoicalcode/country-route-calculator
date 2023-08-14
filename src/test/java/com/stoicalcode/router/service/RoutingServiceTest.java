@@ -1,5 +1,7 @@
 package com.stoicalcode.router.service;
 
+import com.stoicalcode.router.exception.InvalidCountryException;
+import com.stoicalcode.router.exception.PathNotFoundException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -10,7 +12,8 @@ import java.io.IOException;
 import java.util.Arrays;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,20 +33,20 @@ class RoutingServiceTest {
     }
 
     @Test
-    void shouldCallCountryRouteSearchWithCorrectParams() throws IOException {
-        List<String> expectedRoute = Arrays.asList("CZE", "AUT", "ITA");
+    void shouldCallCountryRouteSearch_WhenCorrectParams() throws IOException, InvalidCountryException, PathNotFoundException {
+        List<String> expected = Arrays.asList("CZE", "AUT", "ITA");
 
-        when(mockSearchCountryService.findLandRoute(ORIGIN, DESTINATION)).thenReturn(expectedRoute);
+        when(mockSearchCountryService.findLandRoute(ORIGIN, DESTINATION)).thenReturn(expected);
 
-        List<String> actualRoute = sut.findLandRoute(ORIGIN, DESTINATION);
+        List<String> actual = sut.findLandRoute(ORIGIN, DESTINATION);
 
-        assertEquals(expectedRoute, actualRoute);
+        assertThat(actual).isEqualTo(expected);
         verify(mockSearchCountryService, times(1)).findLandRoute(ORIGIN, DESTINATION);
         verifyNoMoreInteractions(mockSearchCountryService);
     }
 
     @Test
-    void shouldHandleIOExceptionFromCountryRouteSearch() throws IOException {
+    void shouldHandleIOException() throws IOException, InvalidCountryException, PathNotFoundException {
         when(mockSearchCountryService.findLandRoute(ORIGIN, DESTINATION)).thenThrow(new IOException("simulated IOException"));
 
         assertThrows(IOException.class, () -> sut.findLandRoute(ORIGIN, DESTINATION));
@@ -52,7 +55,7 @@ class RoutingServiceTest {
     }
 
     @Test
-    void shouldHandleAnyOtherExceptionFromCountryRouteSearch() throws IOException {
+    void shouldHandleAnyOtherException() throws IOException, InvalidCountryException, PathNotFoundException {
         when(mockSearchCountryService.findLandRoute(ORIGIN, DESTINATION)).thenThrow(new RuntimeException("Simulated RuntimeException"));
 
         assertThrows(RuntimeException.class, () -> sut.findLandRoute(ORIGIN, DESTINATION));

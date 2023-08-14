@@ -8,7 +8,9 @@ import lombok.NoArgsConstructor;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
-@Builder @NoArgsConstructor @AllArgsConstructor
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class NameDto {
     private String common;
     private String official;

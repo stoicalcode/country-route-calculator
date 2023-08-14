@@ -7,7 +7,9 @@ import java.util.List;
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 @Data
-@Builder @NoArgsConstructor @AllArgsConstructor
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class CountryDto {
     private NameDto name; // friendly identifier for the country (see @Name.common) TODO
     private String cca3; // ID, country code

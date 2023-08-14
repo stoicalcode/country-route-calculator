@@ -1,21 +1,21 @@
 package com.stoicalcode.router.service;
 
+import com.stoicalcode.router.exception.InvalidCountryException;
 import com.stoicalcode.router.exception.PathNotFoundException;
 import com.stoicalcode.router.model.CountryDto;
 import com.stoicalcode.router.model.CountryValidationResponseDto;
-import com.stoicalcode.router.model.NameDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.*;
 
 @Slf4j
-@Primary
 @Service
 public class BreadthFirstSearchCountryService implements SearchCountryService {
+
+    private static final String PATH_NOT_FOUND_ERROR = "Not possible land route from '%s' to '%s'";
 
     private final CountryService countryService;
 
@@ -25,11 +25,12 @@ public class BreadthFirstSearchCountryService implements SearchCountryService {
     }
 
     @Override
-    public List<String> findLandRoute(String origin, String destination) throws IOException {
+    public List<String> findLandRoute(String origin, String destination)
+            throws IOException, InvalidCountryException, PathNotFoundException {
         CountryValidationResponseDto validationResponse = countryService.validateCountries(origin, destination);
         CountryDto originCountry = validationResponse.originCountry();
         CountryDto destinationCountry = validationResponse.destinationCountry();
-        Map<String, CountryDto> codeToCountryMap = validationResponse.codeToCountryMap();
+        Map<String, CountryDto> cca3ToCountryMap = validationResponse.cca3ToCountryMap();
 
         Queue<CountryDto> queue = new LinkedList<>();
         Set<CountryDto> visited = new HashSet<>();
@@ -48,7 +49,7 @@ public class BreadthFirstSearchCountryService implements SearchCountryService {
             }
 
             for (String neighborCode : currentCountry.getBorders()) {
-                CountryDto neighborCountry = codeToCountryMap.get(neighborCode);
+                CountryDto neighborCountry = cca3ToCountryMap.get(neighborCode);
                 if (!visited.contains(neighborCountry)) {
                     previousPaths.put(neighborCountry, currentCountry);
 
@@ -64,7 +65,7 @@ public class BreadthFirstSearchCountryService implements SearchCountryService {
         }
 
         if (!foundPath) {
-            throw new PathNotFoundException(String.format("not found land path from '%s' to '%s'", origin, destination));
+            throw new PathNotFoundException(String.format(PATH_NOT_FOUND_ERROR, origin, destination));
         }
 
         return buildRoute(originCountry, destinationCountry, previousPaths);
@@ -78,28 +79,26 @@ public class BreadthFirstSearchCountryService implements SearchCountryService {
         }
 
         List<String> route = new ArrayList<>(reversedPath.size());
-        List<String> fullRouteDebug = new ArrayList<>(reversedPath.size());
         for (int i = reversedPath.size() - 1; i >= 0; i--) {
             CountryDto country = reversedPath.get(i);
             route.add(country.getCca3());
-
-            if (log.isDebugEnabled()) {
-                fullRouteDebug.add(String.format("%s (%s)", country.getName().getCommon(), country.getCca3()));
-            }
         }
 
-        log.debug("Found route from '{}' to '{}': {}", getCountryName(originCountry), getCountryName(destinationCountry),
-                String.join(" > ", fullRouteDebug));
-
+        showDebugCountryRouteInfo(originCountry, destinationCountry, reversedPath);
         return route;
     }
 
-    private String getCountryName(CountryDto country) {
-        NameDto countryName = country.getName();
-        if (countryName != null && countryName.getCommon() != null) {
-            return countryName.getCommon();
-        }
+    private void showDebugCountryRouteInfo(CountryDto originCountry, CountryDto destinationCountry,
+                                           List<CountryDto> reversedPath) {
+        if (log.isDebugEnabled()) {
+            List<String> fullRouteDebug = new ArrayList<>(reversedPath.size());
+            for (int i = reversedPath.size() - 1; i >= 0; i--) {
+                CountryDto country = reversedPath.get(i);
+                fullRouteDebug.add(String.format("%s", countryService.getCountryNameWithCca3(country)));
+            }
 
-        return country.getCca3();
+            log.debug("Found route from '{}' to '{}': {}", countryService.getCountryNameWithCca3(originCountry),
+                    countryService.getCountryNameWithCca3(destinationCountry), String.join(" > ", fullRouteDebug));
+        }
     }
 }

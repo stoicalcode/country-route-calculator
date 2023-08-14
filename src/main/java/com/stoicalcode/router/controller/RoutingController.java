@@ -7,7 +7,6 @@ import com.stoicalcode.router.service.RoutingService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.util.CollectionUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,18 +26,17 @@ public class RoutingController {
     }
 
     @GetMapping("/routing/{origin}/{destination}")
-    public ResponseEntity<RouteResponseDto> findLandRoute(@PathVariable String origin, @PathVariable String destination) {
+    public ResponseEntity<?> findLandRoute(@PathVariable String origin, @PathVariable String destination) {
         try {
             List<String> route = routingService.findLandRoute(origin, destination);
-            if (CollectionUtils.isEmpty(route)){
-                return ResponseEntity.badRequest().build();
-            }
-
             return ResponseEntity.ok(new RouteResponseDto(route));
 
+        } catch (InvalidCountryException | PathNotFoundException e) {
+            log.error(e.getMessage());
+            return ResponseEntity.badRequest().body(e.getMessage());
         } catch (IOException e) {
-            log.error("Error occurred while finding land route from '{}' to '{}'", origin, destination, e);
-            return ResponseEntity.internalServerError().build();
+            log.error("Internal error occurred: {}", e.getMessage());
+            return ResponseEntity.internalServerError().body(e.getMessage());
         }
     }
 }
